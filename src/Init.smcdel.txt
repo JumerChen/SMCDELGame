@@ -1,0 +1,16 @@
+-- Jewel Distribution Game in SMCDEL with numeric variables
+
+VARS 1, 2, 3, 4, 5, 6, 7
+
+LAW AND (
+  ONEOF(1, 2, 3, 4, 5, 6, 7)
+)
+
+OBS
+  alice: 1, 7
+  bob:   6, 5
+  carol: 4, 2
+
+-- Initial state
+TRUE? {1, 7, 6, 5, 4, 2}
+  alice knows that (1 & 7)
