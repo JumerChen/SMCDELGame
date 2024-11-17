@@ -1,9 +1,22 @@
 import java.io.*;
-import java.util.Scanner;
+import java.util.*;
 
 public class JewelGame {
     private static final String SMCDEL_PATH = "./smcdel"; // 假设 smcdel 可执行文件在当前目录
     private static final String INPUT_FILE = "Input.smcdel.txt";
+
+    private static final Map<Integer, String> JEWEL_MAP = Map.of(
+            1, "Red",
+            2, "Orange",
+            3, "Yellow",
+            4, "Green",
+            5, "Black",
+            6, "Blue",
+            7, "Purple"
+    );
+
+    private static final List<String> QUERY_HISTORY = new ArrayList<>();
+    private static final List<String> RESULT_HISTORY = new ArrayList<>();
 
     public static void main(String[] args) {
         System.out.println("Welcome to the Jewel Distribution Game!");
@@ -11,7 +24,7 @@ public class JewelGame {
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
-                System.out.println("Enter your logic formula (or type 'exit' to quit):");
+                System.out.println("Enter your logic formula (or type 'history' to view past queries, 'exit' to quit):");
                 String userInput = scanner.nextLine().trim();
 
                 if ("exit".equalsIgnoreCase(userInput)) {
@@ -19,28 +32,29 @@ public class JewelGame {
                     break;
                 }
 
-                // Validate user input format (optional, basic check)
+                if ("history".equalsIgnoreCase(userInput)) {
+                    showHistory();
+                    continue;
+                }
+
+                userInput = userInput.toLowerCase();
+
                 if (!isValidFormula(userInput)) {
                     System.out.println("Invalid formula format. Please try again.");
                     continue;
                 }
 
-                // Write user input to .smcdel.txt file
                 writeSMCDELFile(userInput);
 
-                // Execute SMCDEL and capture output
-                String output = runSMCDEL();
+                String smcdelOutput = runSMCDEL();
 
-                // Display SMCDEL output to user
-                System.out.println("SMCDEL Output:");
-                System.out.println(output);
+                interpretAndDisplayOutput(userInput, smcdelOutput);
             }
         }
     }
 
     private static boolean isValidFormula(String formula) {
-        // 简单验证公式格式，例如不能为空，且只包含合法字符
-        return formula != null && formula.matches("[a-zA-Z0-9_\\s&|~()]+");
+        return formula != null && formula.matches("[a-z0-9_\\s&|~()]+");
     }
 
     private static void writeSMCDELFile(String formula) {
@@ -68,6 +82,8 @@ public class JewelGame {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // 移除 ANSI 转义序列
+                    line = line.replaceAll("\u001B\\[[;\\d]*m", "");
                     output.append(line).append("\n");
                 }
             }
@@ -81,5 +97,51 @@ public class JewelGame {
         }
 
         return output.toString();
+    }
+
+    private static void interpretAndDisplayOutput(String formula, String smcdelOutput) {
+        QUERY_HISTORY.add(formula);
+        RESULT_HISTORY.add(smcdelOutput);
+
+        System.out.println("SMCDEL Output:");
+        System.out.println(smcdelOutput);
+
+        if (smcdelOutput.contains("At which states")) {
+            String[] states = extractStates(smcdelOutput);
+            if (states.length == 0) {
+                System.out.println("No states match the given query.");
+            } else {
+                System.out.println("Matching states:");
+                for (String state : states) {
+                    try {
+                        int stateId = Integer.parseInt(state.trim());
+                        System.out.println("- State " + stateId + ": " + describeState(stateId));
+                    } catch (NumberFormatException e) {
+                        System.err.println("Warning: Invalid state ID detected in SMCDEL output: " + state);
+                    }
+                }
+            }
+        }
+    }
+
+    private static String[] extractStates(String smcdelOutput) {
+        try {
+            String[] parts = smcdelOutput.split("\\[|\\]");
+            return parts.length > 1 ? parts[1].split(",") : new String[0];
+        } catch (Exception e) {
+            return new String[0];
+        }
+    }
+
+    private static String describeState(int stateId) {
+        return JEWEL_MAP.getOrDefault(stateId, "Unknown Jewel");
+    }
+
+    private static void showHistory() {
+        System.out.println("\nQuery History:");
+        for (int i = 0; i < QUERY_HISTORY.size(); i++) {
+            System.out.println((i + 1) + ". Query: " + QUERY_HISTORY.get(i));
+            System.out.println("   Result: " + RESULT_HISTORY.get(i).replace("\n", "\n      "));
+        }
     }
 }

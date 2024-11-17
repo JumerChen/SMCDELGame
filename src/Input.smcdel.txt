@@ -5,4 +5,4 @@ OBS alice: 1, 4
      bob: 3, 5
      carol: 6, 2
 WHERE?
-  bob knows whether 1
+  carol knows whether 1
