@@ -1,22 +1,24 @@
+// Import statements
 import java.io.*;
 import java.util.*;
+import java.util.regex.*;
+import java.util.stream.Collectors;
 
 public class JewelGame {
-    private static final String SMCDEL_PATH = "./smcdel"; // 假设 smcdel 可执行文件在当前目录
+    private static final String SMCDEL_PATH = "./smcdel";
     private static final String INPUT_FILE = "Input.smcdel.txt";
-
-    private static final Map<Integer, String> JEWEL_MAP = Map.of(
-            1, "Red",
-            2, "Orange",
-            3, "Yellow",
-            4, "Green",
-            5, "Black",
-            6, "Blue",
-            7, "Purple"
+    private static final Map<Integer, String> STATE_TO_JEWEL = Map.of(
+            1, "Red", 2, "Orange", 3, "Yellow",
+            4, "Green", 5, "Black", 6, "Blue", 7, "Purple"
     );
+    private static final List<String> INITIAL_DISTRIBUTION = List.of(
+            "Alice: Red, Green", "Bob: Yellow, Black", "Carol: Blue, Orange"
+    );
+    private static final Set<String> ALL_JEWELS = new HashSet<>(STATE_TO_JEWEL.values());
 
-    private static final List<String> QUERY_HISTORY = new ArrayList<>();
-    private static final List<String> RESULT_HISTORY = new ArrayList<>();
+    private static final List<String> queryHistory = new ArrayList<>();
+    private static final List<String> resultHistory = new ArrayList<>();
+    private static Set<String> possibleMissingJewels = new HashSet<>(ALL_JEWELS);
 
     public static void main(String[] args) {
         System.out.println("Welcome to the Jewel Distribution Game!");
@@ -24,7 +26,7 @@ public class JewelGame {
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
-                System.out.println("Enter your logic formula (or type 'history' to view past queries, 'exit' to quit):");
+                System.out.println("Enter your logic formula (or type 'history', 'show states', 'show initial', 'guess', or 'exit'):");
                 String userInput = scanner.nextLine().trim();
 
                 if ("exit".equalsIgnoreCase(userInput)) {
@@ -32,29 +34,51 @@ public class JewelGame {
                     break;
                 }
 
-                if ("history".equalsIgnoreCase(userInput)) {
-                    showHistory();
-                    continue;
+                switch (userInput.toLowerCase()) {
+                    case "history":
+                        showHistory();
+                        break;
+                    case "show states":
+                        showAllStates();
+                        break;
+                    case "show initial":
+                        showInitialDistribution();
+                        break;
+                    case "guess":
+                        handleGuess(scanner);
+                        break;
+                    default:
+                        handleQuery(userInput);
+                        break;
                 }
-
-                userInput = userInput.toLowerCase();
-
-                if (!isValidFormula(userInput)) {
-                    System.out.println("Invalid formula format. Please try again.");
-                    continue;
-                }
-
-                writeSMCDELFile(userInput);
-
-                String smcdelOutput = runSMCDEL();
-
-                interpretAndDisplayOutput(userInput, smcdelOutput);
             }
         }
     }
 
+    private static void handleQuery(String formula) {
+        if (!isValidFormula(formula)) {
+            System.out.println("Invalid formula format. Please try again.");
+            return;
+        }
+
+        writeSMCDELFile(formula);
+        String output = runSMCDEL();
+        queryHistory.add(formula);
+        resultHistory.add(output);
+
+        System.out.println("SMCDEL Output:");
+        System.out.println(output);
+
+        List<Integer> matchedStates = parseMatchingStates(output);
+        if (matchedStates.isEmpty() || matchedStates.size() == STATE_TO_JEWEL.size()) {
+            System.out.println("No matching states found. Unable to narrow down possible missing jewels.");
+        } else {
+            interpretAndDisplayOutput(matchedStates);
+        }
+    }
+
     private static boolean isValidFormula(String formula) {
-        return formula != null && formula.matches("[a-z0-9_\\s&|~()]+");
+        return formula != null && formula.matches("[a-zA-Z0-9_\\s&|~()]+");
     }
 
     private static void writeSMCDELFile(String formula) {
@@ -82,12 +106,9 @@ public class JewelGame {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // 移除 ANSI 转义序列
-                    line = line.replaceAll("\u001B\\[[;\\d]*m", "");
                     output.append(line).append("\n");
                 }
             }
-
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 output.append("SMCDEL execution failed with exit code: ").append(exitCode).append("\n");
@@ -99,49 +120,63 @@ public class JewelGame {
         return output.toString();
     }
 
-    private static void interpretAndDisplayOutput(String formula, String smcdelOutput) {
-        QUERY_HISTORY.add(formula);
-        RESULT_HISTORY.add(smcdelOutput);
+    private static List<Integer> parseMatchingStates(String output) {
+        Pattern pattern = Pattern.compile("\\[(\\d+(,\\s*\\d+)*)\\]");
+        Matcher matcher = pattern.matcher(output);
 
-        System.out.println("SMCDEL Output:");
-        System.out.println(smcdelOutput);
-
-        if (smcdelOutput.contains("At which states")) {
-            String[] states = extractStates(smcdelOutput);
-            if (states.length == 0) {
-                System.out.println("No states match the given query.");
-            } else {
-                System.out.println("Matching states:");
-                for (String state : states) {
-                    try {
-                        int stateId = Integer.parseInt(state.trim());
-                        System.out.println("- State " + stateId + ": " + describeState(stateId));
-                    } catch (NumberFormatException e) {
-                        System.err.println("Warning: Invalid state ID detected in SMCDEL output: " + state);
-                    }
-                }
-            }
+        if (matcher.find()) {
+            return Arrays.stream(matcher.group(1).split(","))
+                    .map(String::trim)
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
         }
+        return Collections.emptyList();
     }
 
-    private static String[] extractStates(String smcdelOutput) {
-        try {
-            String[] parts = smcdelOutput.split("\\[|\\]");
-            return parts.length > 1 ? parts[1].split(",") : new String[0];
-        } catch (Exception e) {
-            return new String[0];
-        }
-    }
+    private static void interpretAndDisplayOutput(List<Integer> matchedStates) {
+        System.out.println("Matching states:");
+        matchedStates.forEach(state -> System.out.println("- State " + state + ": " + STATE_TO_JEWEL.get(state)));
 
-    private static String describeState(int stateId) {
-        return JEWEL_MAP.getOrDefault(stateId, "Unknown Jewel");
+        Set<String> observedJewels = matchedStates.stream()
+                .map(STATE_TO_JEWEL::get)
+                .collect(Collectors.toSet());
+        possibleMissingJewels.removeAll(observedJewels);
+
+        if (possibleMissingJewels.isEmpty()) {
+            System.out.println("No possible missing jewels could be inferred.");
+        } else {
+            System.out.println("Possible missing jewels: " + String.join(", ", possibleMissingJewels));
+        }
     }
 
     private static void showHistory() {
         System.out.println("\nQuery History:");
-        for (int i = 0; i < QUERY_HISTORY.size(); i++) {
-            System.out.println((i + 1) + ". Query: " + QUERY_HISTORY.get(i));
-            System.out.println("   Result: " + RESULT_HISTORY.get(i).replace("\n", "\n      "));
+        for (int i = 0; i < queryHistory.size(); i++) {
+            System.out.println((i + 1) + ". " + queryHistory.get(i));
+            System.out.println("   Result: " + resultHistory.get(i));
+        }
+    }
+
+    private static void showAllStates() {
+        System.out.println("\nAll Possible States:");
+        STATE_TO_JEWEL.forEach((state, jewel) -> System.out.println("- State " + state + ": " + jewel));
+    }
+
+    private static void showInitialDistribution() {
+        System.out.println("\nInitial Jewel Distribution:");
+        INITIAL_DISTRIBUTION.forEach(System.out::println);
+    }
+
+    private static void handleGuess(Scanner scanner) {
+        System.out.println("Enter your guess for the missing jewel:");
+        String guess = scanner.nextLine().trim();
+        if (ALL_JEWELS.contains(guess)) {
+            System.out.println("Your guess: " + guess);
+            System.out.println(possibleMissingJewels.contains(guess)
+                    ? "Correct! " + guess + " was missing!"
+                    : "Incorrect guess. The missing jewel is not " + guess + ".");
+        } else {
+            System.out.println("Invalid jewel name. Please try again.");
         }
     }
 }
