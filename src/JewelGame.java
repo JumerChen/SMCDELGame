@@ -20,44 +20,70 @@ public class JewelGame {
     private static final List<String> resultHistory = new ArrayList<>();
     private static Set<String> possibleMissingJewels = new HashSet<>(ALL_JEWELS);
 
+    private static ResourceBundle messages;
+
     public static void main(String[] args) {
-        System.out.println("Welcome to the Jewel Distribution Game!");
-        System.out.println("Try to deduce which jewel is missing.\n");
+        Scanner scanner = new Scanner(System.in);
+        chooseLanguage(scanner);
+        System.out.println(messages.getString("welcome"));
+        System.out.println(messages.getString("instructions"));
 
-        try (Scanner scanner = new Scanner(System.in)) {
-            while (true) {
-                System.out.println("Enter your logic formula (or type 'history', 'show states', 'show initial', 'guess', or 'exit'):");
-                String userInput = scanner.nextLine().trim();
-
-                if ("exit".equalsIgnoreCase(userInput)) {
-                    System.out.println("Thank you for playing the Jewel Distribution Game!");
-                    break;
-                }
-
-                switch (userInput.toLowerCase()) {
-                    case "history":
-                        showHistory();
-                        break;
-                    case "show states":
-                        showAllStates();
-                        break;
-                    case "show initial":
-                        showInitialDistribution();
-                        break;
-                    case "guess":
-                        handleGuess(scanner);
-                        break;
-                    default:
-                        handleQuery(userInput);
-                        break;
-                }
+        while (true) {
+            System.out.println(messages.getString("prompt"));
+            if (!scanner.hasNextLine()) {
+                break;
             }
+            String userInput = scanner.nextLine().trim();
+
+            if ("exit".equalsIgnoreCase(userInput) || "退出".equalsIgnoreCase(userInput)) {
+                System.out.println(messages.getString("goodbye"));
+                break;
+            }
+
+            switch (userInput.toLowerCase()) {
+                case "history":
+                case "历史记录":
+                    showHistory();
+                    break;
+                case "show states":
+                case "显示状态":
+                    showAllStates();
+                    break;
+                case "show initial":
+                case "显示初始分配":
+                    showInitialDistribution();
+                    break;
+                case "guess":
+                case "猜测":
+                    handleGuess(scanner);
+                    break;
+                default:
+                    handleQuery(userInput);
+                    break;
+            }
+        }
+    }
+
+    private static void chooseLanguage(Scanner scanner) {
+        System.out.println("Choose your language / 请选择你的语言:");
+        System.out.println("1. English");
+        System.out.println("2. 中文 (Chinese)");
+        String choice = scanner.nextLine().trim();
+        switch (choice) {
+            case "2":
+            case "中文":
+            case "Chinese":
+                messages = ResourceBundle.getBundle("MessagesBundle", new Locale("zh", "CN"));
+                break;
+            default:
+                messages = ResourceBundle.getBundle("MessagesBundle", new Locale("en", "US"));
+                break;
         }
     }
 
     private static void handleQuery(String formula) {
         if (!isValidFormula(formula)) {
-            System.out.println("Invalid formula format. Please try again.");
+            System.out.println(messages.getString("invalid_format"));
             return;
         }
 
@@ -66,12 +92,12 @@ public class JewelGame {
         queryHistory.add(formula);
         resultHistory.add(output);
 
-        System.out.println("SMCDEL Output:");
+        System.out.println(messages.getString("smcdel_output"));
         System.out.println(output);
 
         List<Integer> matchedStates = parseMatchingStates(output);
         if (matchedStates.isEmpty() || matchedStates.size() == STATE_TO_JEWEL.size()) {
-            System.out.println("No matching states found. Unable to narrow down possible missing jewels.");
+            System.out.println(messages.getString("no_matching_states"));
         } else {
             interpretAndDisplayOutput(matchedStates);
         }
@@ -92,7 +118,7 @@ public class JewelGame {
             writer.write("WHERE?\n");
             writer.write("  " + formula + "\n");
         } catch (IOException e) {
-            System.err.println("Error writing to SMCDEL input file: " + e.getMessage());
+            System.err.println(messages.getString("error_writing_file") + e.getMessage());
         }
     }
 
@@ -111,10 +137,10 @@ public class JewelGame {
             }
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                output.append("SMCDEL execution failed with exit code: ").append(exitCode).append("\n");
+                output.append(messages.getString("smcdel_failed") + exitCode).append("\n");
             }
         } catch (IOException | InterruptedException e) {
-            output.append("Error running SMCDEL: ").append(e.getMessage()).append("\n");
+            output.append(messages.getString("error_running_smcdel") + e.getMessage()).append("\n");
         }
 
         return output.toString();
@@ -134,7 +160,7 @@ public class JewelGame {
     }
 
     private static void interpretAndDisplayOutput(List<Integer> matchedStates) {
-        System.out.println("Matching states:");
+        System.out.println(messages.getString("matching_states"));
         matchedStates.forEach(state -> System.out.println("- State " + state + ": " + STATE_TO_JEWEL.get(state)));
 
         Set<String> observedJewels = matchedStates.stream()
@@ -143,40 +169,43 @@ public class JewelGame {
         possibleMissingJewels.removeAll(observedJewels);
 
         if (possibleMissingJewels.isEmpty()) {
-            System.out.println("No possible missing jewels could be inferred.");
+            System.out.println(messages.getString("no_possible_missing"));
         } else {
-            System.out.println("Possible missing jewels: " + String.join(", ", possibleMissingJewels));
+            System.out.println(messages.getString("possible_missing") + String.join(", ", possibleMissingJewels));
         }
     }
 
     private static void showHistory() {
-        System.out.println("\nQuery History:");
+        System.out.println("\n" + messages.getString("query_history"));
         for (int i = 0; i < queryHistory.size(); i++) {
             System.out.println((i + 1) + ". " + queryHistory.get(i));
-            System.out.println("   Result: " + resultHistory.get(i));
+            System.out.println("   " + messages.getString("result") + resultHistory.get(i));
         }
     }
 
     private static void showAllStates() {
-        System.out.println("\nAll Possible States:");
+        System.out.println("\n" + messages.getString("all_states"));
         STATE_TO_JEWEL.forEach((state, jewel) -> System.out.println("- State " + state + ": " + jewel));
     }
 
     private static void showInitialDistribution() {
-        System.out.println("\nInitial Jewel Distribution:");
+        System.out.println("\n" + messages.getString("initial_distribution"));
         INITIAL_DISTRIBUTION.forEach(System.out::println);
     }
 
     private static void handleGuess(Scanner scanner) {
-        System.out.println("Enter your guess for the missing jewel:");
+        System.out.println(messages.getString("enter_guess"));
+        if (!scanner.hasNextLine()) {
+            return;
+        }
         String guess = scanner.nextLine().trim();
         if (ALL_JEWELS.contains(guess)) {
-            System.out.println("Your guess: " + guess);
+            System.out.println(messages.getString("your_guess") + guess);
             System.out.println(possibleMissingJewels.contains(guess)
-                    ? "Correct! " + guess + " was missing!"
-                    : "Incorrect guess. The missing jewel is not " + guess + ".");
+                    ? messages.getString("correct_guess") + guess + messages.getString("was_missing")
+                    : messages.getString("incorrect_guess") + guess + messages.getString("not_missing"));
         } else {
-            System.out.println("Invalid jewel name. Please try again.");
+            System.out.println(messages.getString("invalid_jewel"));
         }
     }
 }
