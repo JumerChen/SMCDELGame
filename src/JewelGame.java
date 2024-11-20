@@ -27,6 +27,8 @@ public class JewelGame {
         chooseLanguage(scanner);
         System.out.println(messages.getString("welcome"));
         System.out.println(messages.getString("instructions"));
+        System.out.println(messages.getString("input_hint"));
+        showFormulaExamples(); // Show formula examples to guide the user
 
         while (true) {
             System.out.println(messages.getString("prompt"));
@@ -69,12 +71,14 @@ public class JewelGame {
         System.out.println("1. English");
         System.out.println("2. 中文 (Chinese)");
         String choice = scanner.nextLine().trim();
-        switch (choice) {
+        switch (choice.toLowerCase()) {
             case "2":
             case "中文":
-            case "Chinese":
+            case "chinese":
                 messages = ResourceBundle.getBundle("MessagesBundle", new Locale("zh", "CN"));
                 break;
+            case "1":
+            case "english":
             default:
                 messages = ResourceBundle.getBundle("MessagesBundle", new Locale("en", "US"));
                 break;
@@ -84,6 +88,7 @@ public class JewelGame {
     private static void handleQuery(String formula) {
         if (!isValidFormula(formula)) {
             System.out.println(messages.getString("invalid_format"));
+            System.out.println(messages.getString("input_examples"));
             return;
         }
 
@@ -173,6 +178,13 @@ public class JewelGame {
         } else {
             System.out.println(messages.getString("possible_missing") + String.join(", ", possibleMissingJewels));
         }
+    }
+
+    private static void showFormulaExamples() {
+        System.out.println(messages.getString("input_examples"));
+        System.out.println("1. alice knows whether 1");
+        System.out.println("2. bob knows that 3 & ~6");
+        System.out.println("3. carol knows whether (1 | 4)");
     }
 
     private static void showHistory() {
