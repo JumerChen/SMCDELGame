@@ -10,11 +10,11 @@ public class JewelGame {
         chooseLanguage(scanner); // 选择语言
         System.out.println(messages.getString("welcome")); // 欢迎信息
         System.out.println(messages.getString("instructions")); // 游戏说明
-        System.out.println(messages.getString("input_hint")); // 输入提示
-        GameHelper.showFormulaExamples(messages); // 显示逻辑公式示例，指导用户输入
 
         while (true) {
-            System.out.println(messages.getString("prompt")); // 输入提示
+            System.out.println(messages.getString("input_hint")); // 输入提示
+            GameHelper.showFormulaExamples(messages); // 每次输入时都显示逻辑公式示例
+
             if (!scanner.hasNextLine()) {
                 break;
             }
