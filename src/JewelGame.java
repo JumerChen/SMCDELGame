@@ -12,12 +12,14 @@ public class JewelGame {
         System.out.println(messages.getString("instructions")); // 游戏说明
 
         while (true) {
-            System.out.println(messages.getString("input_hint")); // 输入提示
-            GameHelper.showFormulaExamples(messages); // 每次输入时都显示逻辑公式示例
+            // 每次提示输入时，同时显示宝石编号和公式示例
+            GameHelper.showFormulaExamplesWithJewelNumbers(messages);
+            System.out.println(messages.getString("prompt")); // 输入提示
 
             if (!scanner.hasNextLine()) {
                 break;
             }
+
             String userInput = scanner.nextLine().trim();
 
             // 支持用户通过"exit"或"退出"结束游戏
@@ -45,6 +47,7 @@ public class JewelGame {
                     GameHelper.handleGuess(scanner, messages); // 用户猜测操作
                     break;
                 default:
+                    System.out.println(messages.getString("processing_formula"));
                     GameHelper.handleQuery(userInput, messages); // 处理逻辑查询
                     break;
             }

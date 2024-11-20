@@ -50,12 +50,21 @@ public class GameHelper {
         }
     }
 
-    // 显示逻辑公式示例
-    public static void showFormulaExamples(ResourceBundle messages) {
-        System.out.println(messages.getString("input_examples"));
-        System.out.println("1. alice knows whether 1");
-        System.out.println("2. bob knows that 3 & ~6");
-        System.out.println("3. carol knows whether (1 | 4)");
+    // 显示宝石编号及逻辑公式示例
+    public static void showFormulaExamplesWithJewelNumbers(ResourceBundle messages) {
+        // 显示宝石编号提示（按数字排序，并在一行内输出）
+        System.out.println(messages.getString("jewel_numbers"));
+        String jewelMapping = STATE_TO_JEWEL.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey()) // 按键（数字编号）排序
+                .map(entry -> entry.getValue() + ": " + entry.getKey()) // 格式化为 "宝石: 编号"
+                .collect(Collectors.joining(", ")); // 使用逗号分隔
+        System.out.println(jewelMapping);
+
+        // 显示逻辑公式示例
+        System.out.println("\n" + messages.getString("input_examples"));
+        System.out.println("alice knows whether 1");
+        System.out.println("bob knows that 3 & ~6");
+        System.out.println("carol knows whether (1 | 4)");
     }
 
     // 显示查询历史
